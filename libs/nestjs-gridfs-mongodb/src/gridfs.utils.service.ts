@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import { Connection } from "mongoose";
 import { GridFSBucket, GridFSBucketWriteStream, GridFSFile, ObjectId } from "mongodb";
 import { GridfsFile, GridfsFileBuffer, GridfsGetFileOptions } from "./gridfs.types";
 import { GridfsManagerService } from "./gridfs.manager.service";
-import { Connection } from "mongoose";
 
 @Injectable()
 export class GridfsUtilsService {
