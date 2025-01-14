@@ -1,0 +1,17 @@
+{
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "@app/nestjs-gridfs-mongodb/(.*)": "<rootDir>/../libs/nestjs-gridfs-mongodb/src/$1",
+    "@app/nestjs-gridfs-mongodb": "<rootDir>/../libs/nestjs-gridfs-mongodb/src"
+  }
+}
