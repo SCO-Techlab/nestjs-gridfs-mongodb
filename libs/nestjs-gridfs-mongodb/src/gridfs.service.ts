@@ -69,7 +69,27 @@ export class GridfsService {
     if (!this.manager.exist(bucketName))
       throw new Error(`[Gridfs - getFiles] Bucket ${bucketName} does not exist`);
 
+    // Check if request is looking for a single document
     const single: boolean = options?.single ?? false;
+    
+    // Check filter and manage filter cases
+    if (options && options.filter) {
+      const filter_keys: string[] = Object.keys(options.filter);
+      const filter_values: any[] = Object.values(options.filter);
+
+      // Convert filter ids to ObjectId
+      if (filter_keys && filter_keys.length > 0) {
+        for (const key of filter_keys) {
+          const index: number = filter_keys.indexOf(key);
+          const value: any = filter_values[index];
+
+          if (key.toUpperCase().includes('ID')) {
+            options.filter[key] = new ObjectId(value as string);
+          }
+          
+        }
+      }
+    }
 
     try {
       const files = await this.manager.get(bucketName).find(options.filter ?? {}).toArray();
@@ -80,7 +100,7 @@ export class GridfsService {
       if (!converted_files || converted_files.length === 0) 
         return !single ? [] : undefined;
 
-      if (options.includeBuffer) {
+      if (options.includeBuffer == true) {
         for (const file of converted_files) {
           const fileStream: GridFSBucketReadStream = this.manager.get(bucketName).openDownloadStream(new ObjectId(file._id.toString()));
           file.buffer = await getFileBuffer(file, fileStream);
