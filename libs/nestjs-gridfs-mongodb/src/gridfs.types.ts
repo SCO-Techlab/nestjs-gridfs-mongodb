@@ -22,4 +22,5 @@ export class GridfsFileBuffer {
 export class GridfsGetFileOptions {
     filter?: any;
     includeBuffer?: boolean;
+    single?: boolean;
 }

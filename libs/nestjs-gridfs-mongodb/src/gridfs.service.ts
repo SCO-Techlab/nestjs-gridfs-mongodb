@@ -2,35 +2,162 @@
 import { Injectable } from '@nestjs/common';
 import * as mongoose from 'mongoose';
 import * as multer from 'multer';
-import { GridfsFile, GridfsGetFileOptions } from './gridfs.types';
-import { GridfsUtilsService } from './gridfs.utils.service';
+import { GridfsFile, GridfsFileBuffer, GridfsGetFileOptions } from './gridfs.types';
+import { GridfsManagerService } from './gridfs.manager.service';
+import { GridFSBucket, GridFSBucketReadStream, GridFSBucketWriteStream, GridFSFile, ObjectId } from 'mongodb';
 
 @Injectable()
 export class GridfsService {
 
-  constructor(private readonly utils: GridfsUtilsService) {}
+  constructor(private readonly manager: GridfsManagerService) {}
 
   async createBuckets(bucketNames: string[] | string, connection: mongoose.Connection) {
-    return this.utils.createBuckets(bucketNames, connection);
+    if (!bucketNames || bucketNames.length === 0)
+      throw new Error('[Gridfs - createBuckets] Bucket names are required');
+
+    if (!connection)
+      throw new Error('[Gridfs - createBuckets] MongoDB connection is required');
+
+    if (typeof bucketNames === 'string')
+      bucketNames = [bucketNames];
+
+    try {
+      for (const bucketName of bucketNames) {
+        this.manager.set(bucketName, new GridFSBucket(connection.db, {
+          bucketName: bucketName,
+        }));
+      }
+    } catch (error) {
+      console.log(`[Gridfs - createBuckets] Error: ${error}`);
+    }
   }
 
   async uploadFiles(bucketName: string, files: Express.Multer.File[] | Express.Multer.File): Promise<boolean> {
-    return await this.utils.upload(bucketName, Array.isArray(files) ? files : [files]);
+    if (!this.manager.exist(bucketName))
+      throw new Error(`[Gridfs - upload] Bucket ${bucketName} does not exist`);
+
+    if (!files) 
+      return false;
+
+    files = Array.isArray(files) ? files : [files]
+    if (!files || files.length === 0) 
+      return false;
+
+    try {
+      for (const file of files) {
+        // if (await this.existFile(bookingId, contractPosition)) {
+        //   await this.deleteFile((await this.existFile(bookingId, contractPosition))._id);
+        // }
+
+        const uploadStream: GridFSBucketWriteStream = this.manager.get(bucketName).openUploadStream(file.originalname, {
+          metadata: {
+            mime_type: file.mimetype ?? 'application/octet-stream',
+          }
+        });
+
+        uploadStream.end(file.buffer);
+      }
+      
+      return true;
+    } catch (error) {
+      console.log(`[Gridfs - upload] Error: ${error}`);
+      return false;
+    }
   }
 
-  async getFiles(bucketName: string, options: GridfsGetFileOptions = {}): Promise<GridfsFile[]> {
-    return await this.utils.fetch(bucketName, options) as GridfsFile[];
+  async getFiles(bucketName: string, options: GridfsGetFileOptions = {}): Promise<GridfsFile[] | GridfsFile> {
+    if (!this.manager.exist(bucketName))
+      throw new Error(`[Gridfs - getFiles] Bucket ${bucketName} does not exist`);
+
+    const single: boolean = options?.single ?? false;
+
+    try {
+      const files = await this.manager.get(bucketName).find(options.filter ?? {}).toArray();
+      if (!files || files.length === 0) 
+        return !single ? [] : undefined;
+
+      const converted_files: GridfsFile[] = files.map(file => (convertGridfsFile(file)));
+      if (!converted_files || converted_files.length === 0) 
+        return !single ? [] : undefined;
+
+      if (options.includeBuffer) {
+        for (const file of converted_files) {
+          const fileStream: GridFSBucketReadStream = this.manager.get(bucketName).openDownloadStream(new ObjectId(file._id.toString()));
+          file.buffer = await getFileBuffer(file, fileStream);
+        }
+      }
+
+      return !single 
+        ? converted_files as GridfsFile[] 
+        : converted_files[0] as GridfsFile;
+    } catch (error) {
+      console.log(`[Gridfs - getFiles] Error: ${error}`);
+      return !single ? [] : undefined;
+    }
   }
 
-  async getFile(bucketName: string, options: GridfsGetFileOptions = {}): Promise<GridfsFile> {
-    return await this.utils.fetch(bucketName, options, true) as GridfsFile;
-  }
+  async deleteFiles(bucketName: string, _ids: string[] | string): Promise<boolean> {
+    if (!this.manager.exist(bucketName))
+      throw new Error(`[Gridfs - deleteFiles] Bucket ${bucketName} does not exist`);
 
-  async deleteFile(bucketName: string, _id: string): Promise<boolean> {
-    return await this.utils.delete(bucketName, [_id]);
-  }
+    if (!_ids || _ids.length === 0) 
+      return false;
 
-  async deleteFiles(bucketName: string, _ids: string[]): Promise<boolean> {
-    return await this.utils.delete(bucketName, _ids);
+    if (typeof _ids === 'string')
+      _ids = [_ids];
+
+    try {
+      for (const _id of _ids) 
+        await this.manager.get(bucketName).delete(new ObjectId(_id)); 
+      
+      return true;
+    } catch (error) {
+      console.log(`[Gridfs - deleteFiles] Error: ${error}`);
+      return false;
+    }
   }
+}
+
+function convertGridfsFile(file: GridFSFile): GridfsFile {
+  return {
+    _id: file?._id.toString() ?? undefined,
+    filename: file?.filename ?? undefined,
+    length: file?.length ?? undefined,
+    uploadDate: file?.uploadDate ?? undefined,
+    metadata: file?.metadata ?? undefined,
+    md5: file && file["md5"] ? file["md5"].toString() : undefined,
+  };
+}
+
+async function getFileBuffer(file: GridfsFile, fileReadStream: GridFSBucketReadStream): Promise<GridfsFileBuffer> {
+  if (!file || !fileReadStream)
+    return undefined;
+
+  return await new Promise<GridfsFileBuffer>((resolve) => {
+    try {
+      const chunks: Buffer[] = [];
+
+      fileReadStream.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+  
+      fileReadStream.on('error', () => {
+        resolve(undefined);
+      });
+  
+      fileReadStream.on('end', () => {
+        const fileBuffer = Buffer.concat(chunks);
+        const response: GridfsFileBuffer = {
+          _id: file._id.toString(),
+          buffer: fileBuffer,
+          base64: `data:${file.metadata.mime_type};base64,${fileBuffer.toString('base64')}`,
+        };
+
+        resolve(response);
+      });
+    } catch (error) {
+      console.log(`[Gridfs - getFileBuffer] Error: ${error}`);
+      resolve(undefined);
+    }
+  });
 }
