@@ -15,7 +15,13 @@ export class AppController {
     @Body() data: any,
   ): Promise<boolean> {
     // You can expect a single file (File) or an array of files (File[])
-    return await this.gridfsService.uploadFiles(bucketName, file, data.body ? JSON.parse(data.body.toString()) : undefined);
+    return await this.gridfsService.uploadFiles(
+      bucketName, 
+      file, 
+      data.body 
+        ? JSON.parse(data.body.toString()) as GridfsFileMetadata
+        : undefined
+    );
   }
   
   @Post('getFiles/:bucketName')
