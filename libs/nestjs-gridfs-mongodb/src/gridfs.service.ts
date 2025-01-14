@@ -1,10 +1,10 @@
 
 import { Injectable } from '@nestjs/common';
+import { GridFSBucket, GridFSBucketReadStream, GridFSBucketWriteStream, GridFSFile, ObjectId } from 'mongodb';
 import * as mongoose from 'mongoose';
 import * as multer from 'multer';
 import { GridfsFile, GridfsFileBuffer, GridfsGetFileOptions } from './gridfs.types';
 import { GridfsManagerService } from './gridfs.manager.service';
-import { GridFSBucket, GridFSBucketReadStream, GridFSBucketWriteStream, GridFSFile, ObjectId } from 'mongodb';
 
 @Injectable()
 export class GridfsService {
