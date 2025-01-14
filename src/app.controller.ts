@@ -1,6 +1,6 @@
 import { Body, Controller, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { GridfsFile, GridfsGetFileOptions, GridfsService } from "@app/nestjs-gridfs-mongodb";
+import { GridfsFile, GridfsFileMetadata, GridfsGetFileOptions, GridfsService } from "@app/nestjs-gridfs-mongodb";
 
 @Controller('nestjs-gridfs-mongodb')
 export class AppController {
@@ -12,9 +12,10 @@ export class AppController {
   async uploadFiles(
     @UploadedFile() file: Express.Multer.File,
     @Param('bucketName') bucketName: string,
+    @Body() data: any,
   ): Promise<boolean> {
     // You can expect a single file (File) or an array of files (File[])
-    return await this.gridfsService.uploadFiles(bucketName, file);
+    return await this.gridfsService.uploadFiles(bucketName, file, data.body ? JSON.parse(data.body.toString()) : undefined);
   }
   
   @Post('getFiles/:bucketName')

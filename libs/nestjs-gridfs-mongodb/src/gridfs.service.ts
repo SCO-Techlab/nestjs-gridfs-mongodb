@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { GridFSBucket, GridFSBucketReadStream, GridFSBucketWriteStream, GridFSFile, ObjectId } from 'mongodb';
 import * as mongoose from 'mongoose';
 import * as multer from 'multer';
-import { GridfsFile, GridfsFileBuffer, GridfsGetFileOptions } from './gridfs.types';
+import { GridfsFile, GridfsFileBuffer, GridfsFileMetadata, GridfsGetFileOptions } from './gridfs.types';
 import { GridfsManagerService } from './gridfs.manager.service';
 
 @Injectable()
@@ -32,7 +32,7 @@ export class GridfsService {
     }
   }
 
-  async uploadFiles(bucketName: string, files: Express.Multer.File[] | Express.Multer.File): Promise<boolean> {
+  async uploadFiles(bucketName: string, files: Express.Multer.File[] | Express.Multer.File, metadata: GridfsFileMetadata = undefined): Promise<boolean> {
     if (!this.manager.exist(bucketName))
       throw new Error(`[Gridfs - upload] Bucket ${bucketName} does not exist`);
 
@@ -49,10 +49,13 @@ export class GridfsService {
         //   await this.deleteFile((await this.existFile(bookingId, contractPosition))._id);
         // }
 
+        if (metadata)
+          metadata.mimetype = file.mimetype ?? 'application/octet-stream';
+        else
+          metadata = new GridfsFileMetadata({ mimetype: file.mimetype ?? 'application/octet-stream' });
+
         const uploadStream: GridFSBucketWriteStream = this.manager.get(bucketName).openUploadStream(file.originalname, {
-          metadata: {
-            mime_type: file.mimetype ?? 'application/octet-stream',
-          }
+          metadata: metadata,
         });
 
         uploadStream.end(file.buffer);
@@ -144,7 +147,7 @@ function convertGridfsFile(file: GridFSFile): GridfsFile {
     filename: file?.filename ?? undefined,
     length: file?.length ?? undefined,
     uploadDate: file?.uploadDate ?? undefined,
-    metadata: file?.metadata ?? undefined,
+    metadata: new GridfsFileMetadata(file.metadata ?? { mimetype: undefined }),
     md5: file && file["md5"] ? file["md5"].toString() : undefined,
   };
 }
@@ -170,7 +173,7 @@ async function getFileBuffer(file: GridfsFile, fileReadStream: GridFSBucketReadS
         const response: GridfsFileBuffer = {
           _id: file._id.toString(),
           buffer: fileBuffer,
-          base64: `data:${file.metadata.mime_type};base64,${fileBuffer.toString('base64')}`,
+          base64: `data:${file.metadata.mimetype};base64,${fileBuffer.toString('base64')}`,
         };
 
         resolve(response);

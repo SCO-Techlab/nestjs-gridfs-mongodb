@@ -10,7 +10,12 @@ export class GridfsFile {
 }
 
 export class GridfsFileMetadata {
-    mime_type?: string;
+    mimetype?: string;
+    [key: string]: any;
+
+    constructor(data: Partial<GridfsFileMetadata> = {}) {
+        Object.assign(this, data);
+    }
 }
 
 export class GridfsFileBuffer {
