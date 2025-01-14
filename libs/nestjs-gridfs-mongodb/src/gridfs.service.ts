@@ -1,40 +1,28 @@
 
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { GridFSBucket, GridFSBucketReadStream, GridFSBucketWriteStream, GridFSFile, ObjectId } from 'mongodb';
-import * as mongoose from 'mongoose';
 import * as multer from 'multer';
 import { GridfsFile, GridfsFileBuffer, GridfsFileMetadata, GridfsGetFileOptions } from './gridfs.types';
 import { GridfsManagerService } from './gridfs.manager.service';
+import { GridfsConfig } from './gridfs.config';
+
 
 @Injectable()
 export class GridfsService {
 
-  constructor(private readonly manager: GridfsManagerService) {}
-
-  async createBuckets(bucketNames: string[] | string, connection: mongoose.Connection) {
-    if (!bucketNames || bucketNames.length === 0)
-      throw new Error('[Gridfs - createBuckets] Bucket names are required');
-
-    if (!connection)
-      throw new Error('[Gridfs - createBuckets] MongoDB connection is required');
-
-    if (typeof bucketNames === 'string')
-      bucketNames = [bucketNames];
-
-    try {
-      for (const bucketName of bucketNames) {
-        this.manager.set(bucketName, new GridFSBucket(connection.db, {
-          bucketName: bucketName,
-        }));
-      }
-    } catch (error) {
-      console.log(`[Gridfs - createBuckets] Error: ${error}`);
-    }
+  constructor(
+    @InjectConnection() private readonly connection: Connection,
+    @Inject('CONFIG') private options: GridfsConfig,
+    private readonly manager: GridfsManagerService,
+  ) {
+    init.bind(this)();
   }
 
   async uploadFiles(bucketName: string, files: Express.Multer.File[] | Express.Multer.File, metadata: GridfsFileMetadata = undefined): Promise<boolean> {
     if (!this.manager.exist(bucketName))
-      throw new Error(`[Gridfs - upload] Bucket ${bucketName} does not exist`);
+      throw new HttpException(`[Gridfs - upload] Bucket ${bucketName} does not exist`, HttpStatus.NOT_FOUND);
 
     if (!files) 
       return false;
@@ -63,14 +51,14 @@ export class GridfsService {
       
       return true;
     } catch (error) {
-      console.log(`[Gridfs - upload] Error: ${error}`);
+      console.error(`[Gridfs - upload] Error: ${error}`);
       return false;
     }
   }
 
   async getFiles(bucketName: string, options: GridfsGetFileOptions = {}): Promise<GridfsFile[] | GridfsFile> {
     if (!this.manager.exist(bucketName))
-      throw new Error(`[Gridfs - getFiles] Bucket ${bucketName} does not exist`);
+      throw new HttpException(`[Gridfs - getFiles] Bucket ${bucketName} does not exist`, HttpStatus.NOT_FOUND);
 
     // Check if request is looking for a single document
     const single: boolean = options?.single ?? false;
@@ -114,14 +102,14 @@ export class GridfsService {
         ? converted_files as GridfsFile[] 
         : converted_files[0] as GridfsFile;
     } catch (error) {
-      console.log(`[Gridfs - getFiles] Error: ${error}`);
+      console.error(`[Gridfs - getFiles] Error: ${error}`);
       return !single ? [] : undefined;
     }
   }
 
   async deleteFiles(bucketName: string, _ids: string[] | string): Promise<boolean> {
     if (!this.manager.exist(bucketName))
-      throw new Error(`[Gridfs - deleteFiles] Bucket ${bucketName} does not exist`);
+      throw new HttpException(`[Gridfs - deleteFiles] Bucket ${bucketName} does not exist`, HttpStatus.NOT_FOUND);
 
     if (!_ids || _ids.length === 0) 
       return false;
@@ -135,9 +123,32 @@ export class GridfsService {
       
       return true;
     } catch (error) {
-      console.log(`[Gridfs - deleteFiles] Error: ${error}`);
+      console.error(`[Gridfs - deleteFiles] Error: ${error}`);
       return false;
     }
+  }
+}
+
+function init() {
+  if (!this.connection)
+    throw new Error('[Gridfs - init] MongoDB connection is required');
+
+  if (!this.options)
+    throw new Error('[Gridfs - init] Gridfs config is required');
+
+  if (!this.options.bucketNames || this.options.bucketNames.length === 0) {
+    console.warn('[Gridfs - init] Gridfs bucketNames not provided');
+    return;
+  }
+
+  try {
+    for (const bucketName of this.options.bucketNames) {
+      this.manager.set(bucketName, new GridFSBucket(this.connection.db, {
+        bucketName: bucketName,
+      }));
+    }
+  } catch (error) {
+    console.error(`[Gridfs - init] Error: ${error}`);
   }
 }
 
@@ -179,7 +190,7 @@ async function getFileBuffer(file: GridfsFile, fileReadStream: GridFSBucketReadS
         resolve(response);
       });
     } catch (error) {
-      console.log(`[Gridfs - getFileBuffer] Error: ${error}`);
+      console.error(`[Gridfs - getFileBuffer] Error: ${error}`);
       resolve(undefined);
     }
   });

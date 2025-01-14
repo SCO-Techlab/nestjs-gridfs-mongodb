@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { GridfsModule } from '@app/nestjs-gridfs-mongodb';
  
 @Module({
@@ -9,14 +8,12 @@ import { GridfsModule } from '@app/nestjs-gridfs-mongodb';
     MongooseModule.forRoot('mongodb://localhost:27017/nestjs-gridfs-mongodb'), 
 
     // Register GridfsModule exports GridfsService in global mode
-    GridfsModule.register(),
+    GridfsModule.register({
+      bucketNames: ['client-files', 'worker-files'],
+    }),
   ],
-  controllers: [
-    AppController,
-  ],
-  providers: [
-    AppService,
-  ],
+  controllers: [AppController],
+  providers: [],
 })
 
 export class AppModule {}
