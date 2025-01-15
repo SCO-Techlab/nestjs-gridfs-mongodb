@@ -6,7 +6,8 @@ import { GridfsConfig } from "./gridfs.config";
 interface GridfsConfigFactory {
   createGridfsConfig(): Promise<GridfsConfig> | GridfsConfig;
 }
-export interface GridfsAsyncConfig
+
+interface GridfsAsyncConfig
   extends Pick<ModuleMetadata, 'imports'> {
   inject?: any[];
   useExisting?: Type<GridfsConfigFactory>;
@@ -34,29 +35,25 @@ export class GridfsModule {
       module: GridfsModule,
       imports: [],
       controllers: [],
-      providers: [GridfsService, GridfsManagerService, ...this.createConnectProviders(options),],
+      providers: [GridfsService, GridfsManagerService, ...createConnectProviders(options),],
       exports: [GridfsService],
       global: true
     };
   }
+}
 
-  private static createConnectProviders(options: GridfsAsyncConfig): Provider[] {
-    if (options.useFactory) {
-      return [
-        {
-          provide: 'CONFIG',
-          useFactory: options.useFactory,
-          inject: options.inject || [],
-        }
-      ]
-    }
-
+function createConnectProviders(options: GridfsAsyncConfig): Provider[] {
+  if (options.useFactory) {
     return [
-      {
-        provide: 'CONFIG',
-        useFactory: async (optionsFactory: GridfsConfigFactory) =>  await optionsFactory.createGridfsConfig(),
-        inject: [options.useExisting || options.useClass],
-      }
-    ];
+      { provide: 'CONFIG', useFactory: options.useFactory, inject: options.inject || [] }
+    ]
   }
+
+  return [
+    {
+      provide: 'CONFIG',
+      useFactory: async (optionsFactory: GridfsConfigFactory) =>  await optionsFactory.createGridfsConfig(),
+      inject: [options.useExisting || options.useClass],
+    }
+  ];
 }
