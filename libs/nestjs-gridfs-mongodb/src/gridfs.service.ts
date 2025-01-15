@@ -24,23 +24,29 @@ export class GridfsService {
     if (!this.manager.exist(bucketName))
       throw new HttpException(`[Gridfs - upload] Bucket ${bucketName} does not exist`, HttpStatus.NOT_FOUND);
 
-    if (!files) 
-      return false;
+    files = !files ? [] : Array.isArray(files) 
+      ? files 
+      : [files];
 
-    files = Array.isArray(files) ? files : [files]
     if (!files || files.length === 0) 
-      return false;
+      throw new HttpException(`[Gridfs - upload] Files are required`, HttpStatus.BAD_REQUEST);
 
+    // Check if index exists
     const exist_index: GridfsConfigMetadataIndex = this.options.indexes?.find(index => index.bucketName === bucketName) ?? undefined;
+
     try {
       for (const file of files) {
-        if (exist_index && metadata) {
-          if (await existIndexDocument.bind(this)(bucketName, exist_index, metadata, file.originalname)) {
+
+        // Index exist for this bucketName, will check if a file document already exists
+        if (exist_index) {
+          if (await existIndexDocument.bind(this)(bucketName, exist_index, metadata ?? {}, file.originalname)) {
             console.log(`[Gridfs - upload] ${formatIndexUniqueError(bucketName, exist_index)}`);
             throw new HttpException(`[Gridfs - upload] ${formatIndexUniqueError(bucketName, exist_index)}`, HttpStatus.CONFLICT);
           }
         }
 
+        // If metadata is not provided, create a new GridfsFileMetadata
+        // mimetype is required, so will be provied as default in every case
         if (metadata)
           metadata.mimetype = file.mimetype ?? 'application/octet-stream';
         else
@@ -56,10 +62,7 @@ export class GridfsService {
       return true;
     } catch (error) {
       console.error(`[Gridfs - upload] Error: ${error}`);
-
-      if (error instanceof HttpException)
-        throw error;
-
+      if (error instanceof HttpException) throw error;
       return false;
     }
   }
@@ -85,7 +88,6 @@ export class GridfsService {
           if (key.toUpperCase().includes('ID')) {
             options.filter[key] = new ObjectId(value as string);
           }
-          
         }
       }
     }
@@ -120,7 +122,7 @@ export class GridfsService {
       throw new HttpException(`[Gridfs - deleteFiles] Bucket ${bucketName} does not exist`, HttpStatus.NOT_FOUND);
 
     if (!_ids || _ids.length === 0) 
-      return false;
+      throw new HttpException(`[Gridfs - deleteFiles] Ids are required`, HttpStatus.BAD_REQUEST);
 
     if (typeof _ids === 'string')
       _ids = [_ids];
