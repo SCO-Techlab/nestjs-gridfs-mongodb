@@ -15,6 +15,8 @@ export class AppController {
     @Body() data: any,
   ): Promise<boolean> {
     // You can expect a single file (File) or an array of files (File[])
+    // The body with metadata is optional, and it will be required to pass in text format (JSON.stringify // JSON.parse)
+    // If you don't provide metadata, the file will be uploaded with default metadata with mimetype property value
     return await this.gridfsService.uploadFiles(
       bucketName, 
       file, 
