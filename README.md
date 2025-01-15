@@ -1,6 +1,8 @@
 <p align="center">
   <img src="sco-techlab.png" alt="plot" width="250" />
 </p>
+
+## Nest.JS Gridfs MongoDB
 Nest.JS Gridfs Mongodb is a multiple mongodb gridfs buckets management for Nest.JS framework.
 
 ### Get Started
@@ -52,7 +54,7 @@ export class AppModule {}
 </pre>
 - Module import is global mode, to use gridfs service only need to provide constructor dependency inyection
 
-## Nest.JS Gridfs MongoDB config
+### Nest.JS Gridfs MongoDB config
 <pre>
 export class GridfsConfig {
   bucketNames: string[]; // Name of your buckets, for every bucket will create two collections, bucketName.files and bucketName.chunks
@@ -68,7 +70,7 @@ export class GridfsConfigMetadataIndex {
 }
 </pre>
 
-## Nest.JS Gridfs MongoDB types
+### Nest.JS Gridfs MongoDB types
 <pre>
 
 // Files management classes
@@ -107,7 +109,7 @@ export class GridfsGetFileOptions {
 }
 </pre>
 
-## Controller example
+### Controller example
 <pre>
 import { Body, Controller, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
@@ -164,7 +166,6 @@ export class AppController {
 </pre>
 
 ## Author
-
 Santiago Comeras Oteo
 - <a href="https://web.sco-techlab.es/">SCO Techlab</a>
 - <a href="https://github.com/SCO-Techlab">GitHub</a>

@@ -8,7 +8,7 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
-    "build-library": "rm -rf ./dist && npm run prebuild && tsc && cp ./libs/nestjs-gridfs-mongodb/package.json ./dist/libs/nestjs-gridfs-mongodb && cp ./libs/nestjs-gridfs-mongodb/README.md ./dist/libs/nestjs-gridfs-mongodb && chmod -R 777 ./dist && cp -r ./dist/libs/nestjs-gridfs-mongodb/src/* ./dist/libs/nestjs-gridfs-mongodb/ && rm -rf ./dist/src && rm -rf ./dist/test && rm -rf dist/libs/nestjs-gridfs-mongodb/src",
+    "build-library": "rm -rf ./dist && npm run prebuild && tsc && cp ./libs/nestjs-gridfs-mongodb/package.json ./dist/libs/nestjs-gridfs-mongodb && cp ./README.md ./dist/libs/nestjs-gridfs-mongodb && chmod -R 777 ./dist && cp -r ./dist/libs/nestjs-gridfs-mongodb/src/* ./dist/libs/nestjs-gridfs-mongodb/ && rm -rf ./dist/src && rm -rf ./dist/test && rm -rf dist/libs/nestjs-gridfs-mongodb/src",
     "start-library": "npm link ./libs/nestjs-gridfs-mongodb/ && nest start --watch",
     "install-local-library": "npm i ./dist/libs/nestjs-gridfs-mongodb",
     "publish-library": "npm run build-library && npm publish dist/libs/nestjs-gridfs-mongodb --access=public",
