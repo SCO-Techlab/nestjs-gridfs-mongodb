@@ -265,5 +265,5 @@ async function existIndexDocument(bucketName: string, index: GridfsConfigMetadat
 }
 
 function formatIndexUniqueError(bucketName: string, index: GridfsConfigMetadataIndex): string {
-  return `File already exist in bucket '${bucketName}' in properties '${index.filename ? 'filename' : ''}${index.properties.join(',')}'`;
+  return `File already exist in bucket '${bucketName}' in properties '${index.filename ? 'filename, ' : ''}${index.properties.join(', ')}'`;
 }
