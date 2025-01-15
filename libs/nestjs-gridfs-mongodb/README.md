@@ -164,12 +164,13 @@ export class AppController {
 </pre>
 
 ## Author
-<p align="center">
-  <img src="sco-techlab.png" alt="plot" width="250" />
-</p>
 
 Santiago Comeras Oteo
 - <a href="https://web.sco-techlab.es/">SCO Techlab</a>
 - <a href="https://github.com/SCO-Techlab">GitHub</a>
 - <a href="https://www.npmjs.com/settings/sco-techlab/packages">Npm</a>
 - <a href="https://www.linkedin.com/in/santiago-comeras-oteo-4646191b3/">LinkedIn</a>  
+
+<p align="center">
+  <img src="sco-techlab.png" alt="plot" width="250" />
+</p>
