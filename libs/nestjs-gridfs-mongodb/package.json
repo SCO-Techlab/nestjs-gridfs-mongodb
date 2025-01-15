@@ -1,6 +1,6 @@
 {
   "name": "@sco-techlab/nestjs-gridfs-mongodb",
-  "version": "1.0.1",
+  "version": "10.0.1",
   "author": "SCO Techlab (Santiago Comeras Oteo) <sco.techlab@gmail.com> (https://web.sco-techlab.es/)",
   "description": "A multiple mongodb gridfs buckets management for Nest.JS framework",
   "main": "index.js",
