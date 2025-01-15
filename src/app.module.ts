@@ -6,8 +6,8 @@ import { GridfsModule } from '@app/nestjs-gridfs-mongodb';
 @Module({
   imports: [
     MongooseModule.forRoot('mongodb://localhost:27017/nestjs-gridfs-mongodb'), 
-
-    // Register GridfsModule exports GridfsService in global mode
+    
+    // Simple register with config object
     GridfsModule.register({
       bucketNames: ['client-files', 'worker-files'],
       indexes: [
@@ -18,6 +18,22 @@ import { GridfsModule } from '@app/nestjs-gridfs-mongodb';
         }
       ]
     }),
+
+    // Async register with config object, you can use env variables to load module here
+    /* GridfsModule.registerAsync({
+      useFactory: () => {
+        return {
+          bucketNames: ['client-files', 'worker-files'],
+          indexes: [
+            {
+              bucketName: 'client-files',
+              properties: ["position"],
+              filename: true,
+            }
+          ]
+        };
+      }
+    }), */
   ],
   controllers: [AppController],
   providers: [],
