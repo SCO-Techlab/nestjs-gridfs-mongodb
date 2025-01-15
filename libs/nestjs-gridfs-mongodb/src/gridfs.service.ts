@@ -6,7 +6,7 @@ import { GridFSBucket, GridFSBucketReadStream, GridFSBucketWriteStream, GridFSFi
 import * as multer from 'multer';
 import { GridfsFile, GridfsFileBuffer, GridfsFileMetadata, GridfsGetFileOptions } from './gridfs.types';
 import { GridfsManagerService } from './gridfs.manager.service';
-import { GridfsConfig } from './gridfs.config';
+import { GridfsConfig, GridfsConfigMetadataIndex } from './gridfs.config';
 
 
 @Injectable()
@@ -31,11 +31,15 @@ export class GridfsService {
     if (!files || files.length === 0) 
       return false;
 
+    const exist_index: GridfsConfigMetadataIndex = this.options.indexes?.find(index => index.bucketName === bucketName) ?? undefined;
     try {
       for (const file of files) {
-        // if (await this.existFile(bookingId, contractPosition)) {
-        //   await this.deleteFile((await this.existFile(bookingId, contractPosition))._id);
-        // }
+        if (exist_index && metadata) {
+          if (await existIndexDocument.bind(this)(bucketName, exist_index, metadata, file.originalname)) {
+            console.log(`[Gridfs - upload] ${formatIndexUniqueError(bucketName, exist_index)}`);
+            throw new HttpException(`[Gridfs - upload] ${formatIndexUniqueError(bucketName, exist_index)}`, HttpStatus.CONFLICT);
+          }
+        }
 
         if (metadata)
           metadata.mimetype = file.mimetype ?? 'application/octet-stream';
@@ -52,6 +56,10 @@ export class GridfsService {
       return true;
     } catch (error) {
       console.error(`[Gridfs - upload] Error: ${error}`);
+
+      if (error instanceof HttpException)
+        throw error;
+
       return false;
     }
   }
@@ -141,6 +149,41 @@ function init() {
     return;
   }
 
+  // Check if bucketNames are unique
+  const bucketNames: string[] = [];
+  for (const bucketName of this.options.bucketNames) {
+    if (bucketNames.length == 0) {
+      bucketNames.push(bucketName);
+      continue;
+    }
+
+    if (bucketNames.find(b => b === bucketName))
+      throw new Error(`[Gridfs - init] Gridfs bucketName '${bucketName}' already loaded`);
+
+    bucketNames.push(bucketName);
+  }
+
+  // Check if indexes are unique
+  if (this.options.indexes && this.options.indexes.length > 0) {
+    const bucketNames: string[] = [];
+
+    for (const index of this.options.indexes) {
+      if (!index.bucketName)
+        throw new Error('[Gridfs - init] Gridfs index bucketName is required');
+
+      if (bucketNames.length == 0) {
+        bucketNames.push(index.bucketName);
+        continue;
+      }
+
+      if (bucketNames.find(b => b === index.bucketName))
+        throw new Error(`[Gridfs - init] Gridfs index bucketName '${index.bucketName}' already loaded`);
+
+      bucketNames.push(index.bucketName);
+    }
+  }
+
+  // Add buckets to manager at init
   try {
     for (const bucketName of this.options.bucketNames) {
       this.manager.set(bucketName, new GridFSBucket(this.connection.db, {
@@ -160,6 +203,7 @@ function convertGridfsFile(file: GridFSFile): GridfsFile {
     uploadDate: file?.uploadDate ?? undefined,
     metadata: new GridfsFileMetadata(file.metadata ?? { mimetype: undefined }),
     md5: file && file["md5"] ? file["md5"].toString() : undefined,
+    buffer: undefined,
   };
 }
 
@@ -194,4 +238,30 @@ async function getFileBuffer(file: GridfsFile, fileReadStream: GridFSBucketReadS
       resolve(undefined);
     }
   });
+}
+
+async function existIndexDocument(bucketName: string, index: GridfsConfigMetadataIndex, metadata: GridfsFileMetadata, filename: string): Promise<GridfsFile | undefined> {
+  const filter: any = {};
+
+  // If properties are provided, add them to the filter
+  if (index.properties && index.properties.length > 0) {
+    for (const property of index.properties)
+      filter[`metadata.${property}`] = metadata[property];
+  }
+
+  // If filename unique index is enabled, add it to the filter
+  if (index.filename)
+    filter['filename'] = filename;
+
+  // If filter is empty not continue with the check
+  if (!filter || Object.keys(filter).length === 0)
+    return undefined;
+
+  const getOptions: GridfsGetFileOptions = { filter: filter, single: true };
+  const file: GridfsFile = await this.getFiles(bucketName, getOptions) as GridfsFile;
+  return file ? file : undefined;
+}
+
+function formatIndexUniqueError(bucketName: string, index: GridfsConfigMetadataIndex): string {
+  return `File already exist in bucket '${bucketName}' in properties '${index.filename ? 'filename' : ''}${index.properties.join(',')}'`;
 }

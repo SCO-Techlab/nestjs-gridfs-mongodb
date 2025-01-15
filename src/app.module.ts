@@ -10,6 +10,13 @@ import { GridfsModule } from '@app/nestjs-gridfs-mongodb';
     // Register GridfsModule exports GridfsService in global mode
     GridfsModule.register({
       bucketNames: ['client-files', 'worker-files'],
+      indexes: [
+        {
+          bucketName: 'client-files',
+          properties: ["position"],
+          filename: true,
+        }
+      ]
     }),
   ],
   controllers: [AppController],
