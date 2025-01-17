@@ -1,4 +1,4 @@
-export * from './gridfs.module';
-export * from './gridfs.service';
-export * from './gridfs.types';
-export * from './gridfs.config';
+export { GridfsModule } from './gridfs.module';
+export { GridfsService } from './gridfs.service';
+export { GridfsFile, GridfsFileMetadata, GridfsFileBuffer, GridfsGetFileOptions } from './gridfs.types';
+export { GridfsConfig, GridfsConfigMetadataIndex } from './gridfs.config';
