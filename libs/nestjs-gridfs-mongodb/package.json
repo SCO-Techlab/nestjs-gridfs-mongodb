@@ -18,11 +18,13 @@
     "MongoDB",
     "Mongoose"    
   ],
-  "dependencies": {
+  "peerDependencies": {
     "@nestjs/common": "^10.0.0",
-    "@nestjs/mongoose": "^10.1.0",
-    "mongodb": "^6.12.0",
     "reflect-metadata": "^0.1.13"
+  },
+  "dependencies": {
+    "@nestjs/mongoose": "^10.1.0",
+    "mongodb": "^6.12.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
