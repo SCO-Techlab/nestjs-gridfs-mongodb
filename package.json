@@ -8,7 +8,7 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
-    "build-library": "rm -rf ./dist && npm run prebuild && tsc && cp ./libs/nestjs-gridfs-mongodb/package.json ./dist/libs/nestjs-gridfs-mongodb && cp ./README.md ./dist/libs/nestjs-gridfs-mongodb && chmod -R 777 ./dist && cp -r ./dist/libs/nestjs-gridfs-mongodb/src/* ./dist/libs/nestjs-gridfs-mongodb/ && rm -rf ./dist/src && rm -rf ./dist/test && rm -rf dist/libs/nestjs-gridfs-mongodb/src",
+    "build-library": "rm -rf ./dist && npm run prebuild && tsc && cp ./libs/nestjs-gridfs-mongodb/package.json ./dist/libs/nestjs-gridfs-mongodb && cp ./README.md ./dist/libs/nestjs-gridfs-mongodb && cp ./CHANGELOG.md ./dist/libs/nestjs-gridfs-mongodb && chmod -R 777 ./dist && cp -r ./dist/libs/nestjs-gridfs-mongodb/src/* ./dist/libs/nestjs-gridfs-mongodb/ && rm -rf ./dist/src && rm -rf ./dist/test && rm -rf dist/libs/nestjs-gridfs-mongodb/src",
     "start-library": "npm link ./libs/nestjs-gridfs-mongodb/ && nest start --watch",
     "install-local-library": "npm i ./dist/libs/nestjs-gridfs-mongodb",
     "publish-library": "npm run build-library && npm publish dist/libs/nestjs-gridfs-mongodb --access=public",
@@ -27,10 +27,11 @@
   "dependencies": {
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
-    "@nestjs/mongoose": "^10.1.0",
     "@nestjs/platform-express": "^10.0.0",
     "@types/validator": "^13.7.5",
     "nestjs-gridfs-mongodb": "file:dist/libs/nestjs-gridfs-mongodb",
+    "mongodb": "^6.7.0",
+    "mongoose": "^8.4.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0"

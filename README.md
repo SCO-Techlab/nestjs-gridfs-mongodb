@@ -1,25 +1,18 @@
-<p align="center">
-  <img src="sco-techlab.png" alt="plot" width="250" />
-</p>
-
 ## Nest.JS Gridfs MongoDB
 Nest.JS Gridfs Mongodb is a multiple mongodb gridfs buckets management for Nest.JS framework.
 
 ### Get Started
 - Install dependency
-<pre>
+```bash
 npm i @sco-techlab/nestjs-gridfs-mongodb
-</pre>
+```
 - Import GridfsModule module in your 'app.module.ts' file, register or registerAsync methods availables
-<pre>
+```typescript
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { GridfsModule } from '@sco-techlab/nestjs-gridfs-mongodb';
 
 @Module({
   imports: [
-    // A mongodb connection is required, you can use mongoose for example like this
-    MongooseModule.forRoot('mongodb://localhost:27017/nestjs-gridfs-mongodb'),
 
     // Simple register with config object
     GridfsModule.register({
@@ -34,8 +27,9 @@ import { GridfsModule } from '@sco-techlab/nestjs-gridfs-mongodb';
     }),
 
     // Async register with config object, you can use env variables to load module here
-    /* GridfsModule.registerAsync({
-      useFactory: () => {
+    GridfsModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => {
         return {
           bucketNames: ['client-files', 'worker-files'],
           indexes: [
@@ -46,36 +40,49 @@ import { GridfsModule } from '@sco-techlab/nestjs-gridfs-mongodb';
             }
           ]
         };
-      }
-    }), */
+      },
+      inject: [ConfigService],
+    }),
   ],
 })
 export class AppModule {}
-</pre>
+```
 - Module import is global mode, to use gridfs service only need to provide constructor dependency inyection
+```typescript
+import { GridfsService } from '@sco-techlab/nestjs-gridfs-mongodb';
+
+constructor(private gridfsService: GridfsService) {}
+```
 
 ### Nest.JS Gridfs MongoDB config
-<pre>
+```typescript
 export class GridfsConfig {
-  bucketNames: string[]; // Name of your buckets, for every bucket will create two collections, bucketName.files and bucketName.chunks
-  indexes?: GridfsConfigMetadataIndex[]; // Indexes configuration for every bucket, you can use this to create a unique index for a specific bucket, its totally optional
-}
+  // Name of your buckets, for every bucket will create two collections, bucketName.files and bucketName.chunks
+  bucketNames: string[];
 
+  // Indexes configuration for every bucket, you can use this to create a unique index for a specific bucket, its totally optional
+  indexes?: GridfsConfigMetadataIndex[]; 
+}
 
 // If not properties and filename provided, the index will be not applied and duplicated files will be allowed
 export class GridfsConfigMetadataIndex {
-  bucketName: string; // Name of the bucket to apply this index object
-  properties?: string[]; // Properties of the GridfsFile metadata object values to apply unique condition, its totally optional
-  filename?: boolean; // If true, will create a unique index for the filename property, its totally optional
+  // Name of the bucket to apply this index object
+  bucketName: string;
+
+  // Properties of the GridfsFile metadata object values to apply unique condition, its totally optional
+  properties?: string[];
+
+  // If true, will create a unique index for the filename property, its totally optional
+  filename?: boolean;
 }
-</pre>
+```
 
 ### Nest.JS Gridfs MongoDB types
-<pre>
-
+```typescript
 // Files management classes
 export class GridfsFileMetadata {
-  mimetype?: string; // mimetype is always provided in metadata object
+  // Mimetype is always provided in metadata object
+  mimetype?: string; 
   [key: string]: any;
 
   constructor(data: Partial&lt;GridfsFileMetadata&gt; = {}) {
@@ -84,33 +91,52 @@ export class GridfsFileMetadata {
 }
 
 export class GridfsFileBuffer {
-  _id?: string; // _id of the GridfsFile object
+  // _id of the GridfsFile object
+  _id?: string; 
   buffer?: Buffer;
   base64?: string;
 }
 
 export class GridfsFile {
-    _id?: string;
-    length?: number;
-    chunkSize?: number;
-    filename: string;
-    metadata?: GridfsFileMetadata;
-    uploadDate: Date;
-    md5?: string;
-    buffer?: GridfsFileBuffer;
+  _id?: string;
+  length?: number;
+  chunkSize?: number;
+  filename: string;
+  metadata?: GridfsFileMetadata;
+  uploadDate: Date;
+  md5?: string;
+  buffer?: GridfsFileBuffer;
 }
-
 
 // Class to manage the getFiles filter function
 export class GridfsGetFileOptions {
-    filter?: any; // Object with the properties to filter the documents, same work as moongose find filter
-    includeBuffer?: boolean; // Will return the GridfsFile object with the buffer property, buffer includes the data and base64 of the file
-    single?: boolean; // Will return a single document (GridfsFile) or an array of documents (GridfsFile[])
+  // Object with the properties to filter the documents, same work as moongose find filter
+  filter?: any;
+
+  // Will return the GridfsFile object with the buffer property, buffer includes the data and base64 of the file
+  includeBuffer?: boolean;
+
+  // Will return a single document (GridfsFile) or an array of documents (GridfsFile[])
+  single?: boolean;
 }
-</pre>
+```
+
+### Nest.JS Gridfs MongoDB service start
+- To start the buckets service, you need to provide the connection object and call the setConnection method of the service.
+- You should do it when your MongoDB connection is ready.
+```typescript
+import { Connection } from 'mongoose';
+import { GridfsService } from '@sco-techlab/nestjs-gridfs-mongodb';
+
+constructor(private gridfsService: GridfsService) {}
+
+async start(connection: Connection) {
+  await this.gridfsService.setConnection(connection);
+}
+```
 
 ### Controller example
-<pre>
+```typescript
 import { Body, Controller, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { GridfsFile, GridfsFileMetadata, GridfsGetFileOptions, GridfsService } from "@sco-techlab/nestjs-gridfs-mongodb";
@@ -133,9 +159,7 @@ export class AppController {
     return await this.gridfsService.uploadFiles(
       bucketName, 
       file, 
-      data.body 
-        ? JSON.parse(data.body.toString()) as GridfsFileMetadata
-        : undefined
+      data.body ? JSON.parse(data.body.toString()) as GridfsFileMetadata : undefined
     );
   }
   
@@ -163,14 +187,16 @@ export class AppController {
     return await this.gridfsService.deleteFiles(bucketName, data._ids ?? []);
   }
 }
-</pre>
+```
+
+## Changelog
+- You can see the library's change history in the [Changelog](./CHANGELOG.md).
 
 ## Author
 Santiago Comeras Oteo
-- <a href="https://web.sco-techlab.es/">SCO Techlab</a>
 - <a href="https://github.com/SCO-Techlab">GitHub</a>
 - <a href="https://www.npmjs.com/settings/sco-techlab/packages">Npm</a>
-- <a href="https://www.linkedin.com/in/santiago-comeras-oteo-4646191b3/">LinkedIn</a>  
+- <a href="https://www.linkedin.com/in/santiago-comeras-oteo-4646191b3/">LinkedIn</a>
 
 <p align="center">
   <img src="sco-techlab.png" alt="plot" width="250" />

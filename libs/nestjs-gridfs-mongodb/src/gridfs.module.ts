@@ -1,7 +1,8 @@
 import { DynamicModule, Module, ModuleMetadata, Provider, Type } from "@nestjs/common";
-import { GridfsService } from "./gridfs.service";
+import { GridfsConfig } from "./gridfs.config.interface";
 import { GridfsManagerService } from "./gridfs.manager.service";
-import { GridfsConfig } from "./gridfs.config";
+import { GridfsService } from "./gridfs.service";
+import { GridfsUtilsService } from "./gridfs.utils.service";
 
 interface GridfsConfigFactory {
   createGridfsConfig(): Promise<GridfsConfig> | GridfsConfig;
@@ -24,7 +25,12 @@ export class GridfsModule {
       module: GridfsModule,
       imports: [],
       controllers: [],
-      providers: [GridfsService, GridfsManagerService, { provide: 'CONFIG', useValue: options },],
+      providers: [
+        { provide: 'CONFIG', useValue: options },
+        GridfsService, 
+        GridfsManagerService,
+        GridfsUtilsService
+      ],
       exports: [GridfsService],
       global: true
     };
@@ -35,7 +41,12 @@ export class GridfsModule {
       module: GridfsModule,
       imports: [],
       controllers: [],
-      providers: [GridfsService, GridfsManagerService, ...createConnectProviders(options),],
+      providers: [
+        ...createConnectProviders(options),
+        GridfsService, 
+        GridfsManagerService,
+        GridfsUtilsService
+      ],
       exports: [GridfsService],
       global: true
     };
