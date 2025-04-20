@@ -4,7 +4,7 @@ import { GridFSBucketReadStream, GridFSBucketWriteStream, ObjectId } from 'mongo
 import { Connection } from 'mongoose';
 import { GridfsConfig, GridfsConfigMetadataIndex } from './gridfs.config.interface';
 import { GridfsManagerService } from './gridfs.manager.service';
-import { GridfsFile, GridfsFileMetadata, GridfsGetFileOptions } from './gridfs.types.interface';
+import { GridfsDeleteFileResponse, GridfsFile, GridfsFileMetadata, GridfsGetFileOptions, GridfsUploadFileResponse } from './gridfs.types.interface';
 import { GridfsUtilsService } from './gridfs.utils.service';
 
 @Injectable()
@@ -37,20 +37,18 @@ export class GridfsService {
 
   async uploadFiles(
     bucketName: string, 
-    files: Express.Multer.File[] | Express.Multer.File, 
+    files: Express.Multer.File[],
     metadata: GridfsFileMetadata = undefined
-  ): Promise<boolean> {
+  ): Promise<GridfsUploadFileResponse[]> {
     if (!this.manager.exist(bucketName))
       throw new HttpException(`[Gridfs] Bucket ${bucketName} does not exist`, HttpStatus.NOT_FOUND);
-
-    files = !files ? [] : Array.isArray(files) ? files : [files];
 
     if (!files || files.length === 0) 
       throw new HttpException(`[Gridfs] Files are required`, HttpStatus.BAD_REQUEST);
 
     // Check if index exists
     const exist_index: GridfsConfigMetadataIndex = this.options.indexes?.find(index => index.bucketName === bucketName) ?? undefined;
-
+    const uploadedFiles: GridfsUploadFileResponse[] = [];
     try {
       for (const file of files) {
 
@@ -73,21 +71,31 @@ export class GridfsService {
           { metadata: metadata }
         );
 
-        upload_stream.end(file.buffer);
+        const fileId = await new Promise((resolve, reject) => {
+          upload_stream.on('finish', () => resolve(upload_stream.id));
+          upload_stream.on('error', reject);
+          upload_stream.end(file.buffer);
+        });
+
+        if (fileId) {
+          uploadedFiles.push({
+            id: fileId,
+            filename: file.originalname,
+            metadata,
+          });
+        }
       }
       
-      return true;
+      return uploadedFiles;
     } catch (error) {
       if (error instanceof HttpException) throw error;
-      return false;
+      return uploadedFiles;
     }
   }
 
-  async getFiles(bucketName: string, options: GridfsGetFileOptions = {}): Promise<GridfsFile[] | GridfsFile> {
+  async getFiles(bucketName: string, options: GridfsGetFileOptions = {}): Promise<GridfsFile[]> {
     if (!this.manager.exist(bucketName))
       throw new HttpException(`[Gridfs] Bucket '${bucketName}' does not exist`, HttpStatus.NOT_FOUND);
-
-    const single: boolean = options?.single ?? false;
     
     // Check filter and manage filter cases
     if (options && options.filter) {
@@ -97,11 +105,11 @@ export class GridfsService {
     try {
       const files = await this.manager.get(bucketName).find(options.filter ?? {}).toArray();
       if (!files || files.length === 0) 
-        return !single ? [] : undefined;
+        return [];
 
       const converted_files: GridfsFile[] = files.map(file => (this.utils.convertGridfsFile(file)));
       if (!converted_files || converted_files.length === 0) 
-        return !single ? [] : undefined;
+        return [];
 
       if (options.includeBuffer == true) {
         for (const file of converted_files) {
@@ -110,28 +118,31 @@ export class GridfsService {
         }
       }
 
-      return !single ? converted_files as GridfsFile[] : converted_files[0] as GridfsFile;
+      return converted_files;
     } catch (error) {
-      return !single ? [] : undefined;
+      return [];
     }
   }
 
-  async deleteFiles(bucketName: string, _ids: string[] | string): Promise<boolean> {
+  async deleteFiles(bucketName: string, _ids: string[]): Promise<GridfsDeleteFileResponse> {
     if (!this.manager.exist(bucketName))
       throw new HttpException(`[Gridfs] Bucket ${bucketName} does not exist`, HttpStatus.NOT_FOUND);
 
     if (!_ids || _ids.length === 0) 
       throw new HttpException(`[Gridfs] Ids are required`, HttpStatus.BAD_REQUEST);
 
-    if (typeof _ids === 'string')
-      _ids = [_ids];
-
+    const response: GridfsDeleteFileResponse = { deletedIds: [], errorId: undefined };
+    let current_id: string;
     try {
-      for (const _id of _ids) 
+      for (const _id of _ids) {
+        current_id = _id;
         await this.manager.get(bucketName).delete(new ObjectId(_id)); 
-      return true;
+        response.deletedIds.push(_id);
+      }
     } catch (error) {
-      return false;
+      response.errorId = current_id;
+    } finally {
+      return response;
     }
   }
 
@@ -168,8 +179,8 @@ export class GridfsService {
       return undefined;
     }
   
-    const getOptions: GridfsGetFileOptions = { filter: filter, single: true };
-    const file: GridfsFile = await this.getFiles(bucketName, getOptions) as GridfsFile;
-    return file ? file : undefined;
+    const getOptions: GridfsGetFileOptions = { filter: filter };
+    const files: GridfsFile[] = await this.getFiles(bucketName, getOptions);
+    return files && files.length > 0 ? files[0] : undefined;
   }
 }

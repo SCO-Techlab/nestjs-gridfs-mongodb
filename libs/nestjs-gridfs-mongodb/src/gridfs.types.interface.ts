@@ -27,5 +27,15 @@ export class GridfsFileBuffer {
 export class GridfsGetFileOptions {
     filter?: any;
     includeBuffer?: boolean;
-    single?: boolean;
+}
+
+export class GridfsUploadFileResponse {
+    id: any;
+    filename: string;
+    metadata: GridfsFileMetadata;
+}
+
+export class GridfsDeleteFileResponse {
+    deletedIds: string[];
+    errorId?: string;
 }
